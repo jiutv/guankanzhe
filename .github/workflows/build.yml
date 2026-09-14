@@ -1,0 +1,56 @@
+name: Build PC-TVBox Windows
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: java/pom.xml
+
+      - name: Build Java CatVod Server
+        run: |
+          cd java
+          mvn package -DskipTests
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      - name: Build Flutter Windows App
+        run: |
+          cd flutter
+          flutter pub get
+          flutter build windows --release
+
+      - name: Download JRE11 Windows Slim
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.23%2B9/OpenJDK11U-jre_x64_windows_hotspot_11.0.23_9.zip" -OutFile jre.zip
+          Expand-Archive jre.zip -DestinationPath jre_raw
+          Move-Item jre_raw/jdk-11.0.23+9-jre jre
+
+      - name: Assemble Release Package
+        run: |
+          mkdir release
+          cp flutter/build/windows/x64/release/flutter_client.exe release/
+          cp java/target/catvod-server.jar release/
+          cp -r jre release/jre
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc-tvbox-windows
+          path: release
