@@ -19,6 +19,18 @@ jobs:
           cache: maven
           cache-dependency-path: java/pom.xml
 
+      # 新增：下载catvod spider jar并安装到本地maven仓库
+      - name: Download CatVod Spider Jar
+        run: |
+          Invoke-WebRequest -Uri "https://mirror.ghproxy.com/https://raw.githubusercontent.com/catvod/CatVodTVSpider/master/jar/custom_spider.jar" -OutFile spider.jar
+          mvn install:install-file `
+            -Dfile=spider.jar `
+            -DgroupId=com.github.catvod `
+            -DartifactId=spider `
+            -Dversion=1.0.0 `
+            -Dpackaging=jar
+
+      # 正常打包Java项目
       - name: Build Java CatVod Server
         run: |
           cd java
